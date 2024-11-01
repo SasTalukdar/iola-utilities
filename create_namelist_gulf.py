@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import os
 
-os.system('link_grib gfs/gfs* .')
+os.system('/work2/09534/st37357/frontera/HWRF4/hwrfrun/sorc/WPS/link_grib.csh gfs/gfs* .')
 
 def st2(x):
     if x<10:
@@ -22,14 +22,14 @@ def st2(x):
 basin='gulf'
 # basin= 'nio' or 'gulf'
 
-start_date="2017-08-24 00:00:00"
-end_date = "2017-08-26 00:00:00"
-coords=np.array([[-92.5, 22], [-95.36, 29.76]])
+start_date="2024-08-05 00:00:00"
+end_date = "2024-08-11 00:00:00"
+coords=np.array([[-84.33, 28.14], [-99, 31]])
 history_interval_d2 = 60
 history_interval_d3 = 60
 
-d3_size=[5, 3]
-d2_buffer=[3, 3]
+d3_size=[5, 10]
+d2_buffer=[5, 5]
 num_moves=[-99, 0]
 
 dom3_yres=0.011
@@ -131,7 +131,7 @@ wps=f'''
   wrf_core = "NMM",
   start_date = "{str(st).replace(' ','_')}",
   end_date = "{str(ed).replace(' ','_')}",
-  max_dom = {max_dom},
+  max_dom = 4,
   interval_seconds = 10800,
   io_form_geogrid = 2,
   nocolons = T,
@@ -190,8 +190,8 @@ inp=f'''
   interval_seconds = 10800,
   history_interval = 60, {f'{history_interval_d2}, '*len(cor_lon)}{f'{history_interval_d3}, '*len(cor_lon)}
   auxhist1_interval = {'60, '*max_dom}
-  auxhist2_interval = {'180, '*max_dom}
-  auxhist3_interval = {'180, '*max_dom}
+  auxhist2_interval = {'60, '*max_dom}
+  auxhist3_interval = {'60, '*max_dom}
   history_end = {'540, '*max_dom}
   auxhist2_end = {'540, '*max_dom}
   auxhist1_outname = "wrfdiag_d<domain>",
@@ -232,7 +232,7 @@ inp=f'''
   time_step = 30,
   time_step_fract_num = 0,
   time_step_fract_den = 1,
-  max_dom = {max_dom},
+  max_dom = 4,
   s_we = {'1, '*max_dom}
   e_we = {e_we}
   s_sn = {'1, '*max_dom}
@@ -254,7 +254,7 @@ inp=f'''
   j_parent_start = {j_parent_start},
   feedback = 1,
   num_moves = 0, {(f'{num_moves}'[1:-1]+', ')*len(cor_lon)}
-  num_metgrid_levels = 32,
+  num_metgrid_levels = 34,
   p_top_requested = 1000.0,
   ptsgm = 15000.0,
   eta_levels = 1.0, 0.997622, 0.995078, 0.99224, 0.989036, 0.98544, 0.981451, 0.977061, 0.972249, 0.966994, 0.96128, 0.955106, 0.948462, 0.941306, 0.933562, 0.925134, 0.915937, 0.90589, 0.894913, 0.882926, 0.869842, 0.855646, 0.840183, 0.823383, 0.805217, 0.785767, 0.7651, 0.7432, 0.720133, 0.695967, 0.670867, 0.645033, 0.6187, 0.592067, 0.565333, 0.538733, 0.5125, 0.4868, 0.461767, 0.437533, 0.4142, 0.391767, 0.370233, 0.3496, 0.329867, 0.310967, 0.292867, 0.275533, 0.258933, 0.243, 0.2277, 0.213, 0.198867, 0.1853, 0.172267, 0.159733, 0.147633, 0.135967, 0.124767, 0.114033, 0.103733, 0.093867, 0.0844, 0.075333, 0.0666, 0.058267, 0.050333, 0.042833, 0.035733, 0.029, 0.0226, 0.0165, 0.010733, 0.005267, 0.0,

@@ -92,3 +92,8 @@ alias link_grib=/work2/09534/st37357/frontera/HWRF4/hwrfrun/sorc/WPS/link_grib.c
 
 #cp /work2/09534/st37357/stampede3/iola_scripts/namelist* .
 cp /work2/09534/st37357/stampede3/iola_scripts/iola-utilities/create_namelist.py .
+cp /work2/09534/st37357/stampede3/iola_scripts/iola-utilities/create_namelist_gulf.py .
+cp /work2/09534/st37357/stampede3/iola_scripts/iola-utilities/job.sh .
+cp /work2/09534/st37357/stampede3/iola_scripts/iola-utilities/acc_austin.py .
+cp /work2/09534/st37357/stampede3/iola_scripts/iola-utilities/down.py .
+cp /work2/09534/st37357/stampede3/iola_scripts/iola-utilities/down_fnl.py .
