@@ -20,8 +20,8 @@ ln -fs /work2/09534/st37357/stampede3/IOLA_repository/parm/hwrf_Vtable_gfs2017 .
 ln -fs /work2/09534/st37357/stampede3/IOLA_repository/sorc/WPSV3/ungrib.exe .
 ln -fs /work2/09534/st37357/stampede3/IOLA_repository/sorc/WPSV3/metgrid.exe .
 
-ln -fs /work2/09534/st37357/stampede3/IOLA_repository/sorc/WRFV3/main/real_nmm.exe .
-ln -fs /work2/09534/st37357/stampede3/IOLA_repository/sorc/WRFV3/main/wrf.exe .
+ln -fs /work2/09534/st37357/stampede3/WRF_cp_evp/main/real_nmm.exe .
+ln -fs /work2/09534/st37357/stampede3/WRF_cp_evp/main/wrf.exe .
 
 ln -sf $FIX/hwrf_eta_micro_lookup.dat eta_micro_lookup.dat
 ln -sf $FIX/hwrf_track track
@@ -95,7 +95,5 @@ cp /work2/09534/st37357/stampede3/iola_scripts/iola-utilities/create_namelist.py
 cp /work2/09534/st37357/stampede3/iola_scripts/iola-utilities/create_namelist_cp_gulf.py .
 cp /work2/09534/st37357/stampede3/iola_scripts/iola-utilities/job.sh .
 cp /work2/09534/st37357/stampede3/iola_scripts/iola-utilities/acc_austin.py .
-cp /work2/09534/st37357/stampede3/iola_scripts/iola-utilities/ext_rain.py .
 cp /work2/09534/st37357/stampede3/iola_scripts/iola-utilities/down.py .
 cp /work2/09534/st37357/stampede3/iola_scripts/iola-utilities/down_fnl.py .
-cp /work2/09534/st37357/stampede3/iola_scripts/iola-utilities/run_unipost .

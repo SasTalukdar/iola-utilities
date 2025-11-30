@@ -11,8 +11,6 @@ import numpy as np
 import pandas as pd
 import os
 
-os.system('/work2/09534/st37357/frontera/HWRF4/hwrfrun/sorc/WPS/link_grib.csh gfs/gfs* .')
-
 def st2(x):
     if x<10:
         return '0'+str(x)
@@ -22,21 +20,29 @@ def st2(x):
 basin='gulf'
 # basin= 'nio' or 'gulf'
 
-start_date="2017-08-24 00:00:00"
-end_date = "2017-08-26 00:00:00"
-coords=np.array([[-92.5, 22], [-95.36, 29.76]])
+start_date="2018-09-04 00:00:00"
+end_date = "2018-09-08 00:00:00"
+coords=np.array([[-83.93, 25.72]])
 history_interval_d2 = 60
 history_interval_d3 = 60
 
-d3_size=[5, 3]
-d2_buffer=[3, 3]
-num_moves=[-99, 0]
+d3_size=[6]
+d2_buffer=[5]
+num_moves=[-99]
 
 dom3_yres=0.011
 
 coords_dir='/work2/09534/st37357/share/'
 #coords_dir='/Users/sasankatalukdar/sas/iola'
+#################################################
+start_date1=pd.to_datetime(start_date)
+end_date1=pd.to_datetime(end_date)
 
+for date1 in pd.date_range(start_date1,end_date1,freq='6H'):
+    os.system(f'wget https://data.rda.ucar.edu/d083003/{date1.year}/{date1.year}{st2(date1.month)}/gdas1.fnl0p25.{date1.year}{st2(date1.month)}{st2(date1.day)}{st2(date1.hour)}.f00.grib2')
+    os.system(f'wget https://data.rda.ucar.edu/d083003/{date1.year}/{date1.year}{st2(date1.month)}/gdas1.fnl0p25.{date1.year}{st2(date1.month)}{st2(date1.day)}{st2(date1.hour)}.f03.grib2')
+os.system('/work2/09534/st37357/frontera/HWRF4/hwrfrun/sorc/WPS/link_grib.csh *.grib2 .')
+###############################################
 dom3_xres=dom3_yres*2
 dom2_yres=dom3_yres*3
 dom2_xres=dom3_xres*3
@@ -131,7 +137,7 @@ wps=f'''
   wrf_core = "NMM",
   start_date = "{str(st).replace(' ','_')}",
   end_date = "{str(ed).replace(' ','_')}",
-  max_dom = {max_dom},
+  max_dom = 3,
   interval_seconds = 10800,
   io_form_geogrid = 2,
   nocolons = T,
@@ -232,7 +238,7 @@ inp=f'''
   time_step = 30,
   time_step_fract_num = 0,
   time_step_fract_den = 1,
-  max_dom = {max_dom},
+  max_dom = 3,
   s_we = {'1, '*max_dom}
   e_we = {e_we}
   s_sn = {'1, '*max_dom}
@@ -253,7 +259,7 @@ inp=f'''
   i_parent_start = {i_parent_start},
   j_parent_start = {j_parent_start},
   feedback = 1,
-  num_moves = 0, {(f'{num_moves}'[1:-1]+', ')*len(cor_lon)}
+  num_moves = 0, {(f'{num_moves}'[1:-1]+', ')*(max_dom-1)}
   num_metgrid_levels = 34,
   p_top_requested = 1000.0,
   ptsgm = 15000.0,
@@ -279,21 +285,21 @@ inp=f'''
   coef_ric_l = 0.16,
   coef_ric_s = 0.25,
   h_diff = {'1.0, '*max_dom}
-  gwd_opt = 2, {'0, '*(max_dom-1)}
+  gwd_opt = 2, 0, 0, 0,
   sfenth = {'0.0, '*max_dom}
-  nrads = 30,{' 90,'*len(coords)}{' 270,'*len(coords)}
-  nradl = 30,{' 90,'*len(coords)}{' 270,'*len(coords)}
-  nphs = 2, {'6, '*(max_dom-1)}
-  ncnvc = 2, {'6, '*(max_dom-1)}
-  ntrack = 6,{' 6,'*len(coords)}{' 18,'*len(coords)}
+  nrads = 30, 90, 270, 270
+  nradl = 30, 90, 270, 270
+  nphs = 2, 6, 6, 6,
+  ncnvc = 2, 6, 6, 6,
+  ntrack = 6, 6, 18,, 18,
   gfs_alpha = {'-1.0, '*max_dom}
-  sas_pgcon = 0.55, {'0.2, '*(max_dom-1)}
+  sas_pgcon = 0.55, 0.2, 0.2, 0.2,
   sas_mass_flux = {'0.5, '*max_dom}
   co2tf = 1,
-  vortex_tracker = 2,{' 2,'*len(coords)}{' 7,'*len(coords)}
-  nomove_freq = 0, {'3.0, '*(max_dom-1)}
+  vortex_tracker = 2, 2, 7, 7,
+  nomove_freq = 0, 3.0, 3.0, 3.0,
   tg_option = 1,
-  ntornado = 2,{' 6,'*len(coords)}{' 18,'*len(coords)}
+  ntornado = 2, 6, 18, 18,
   cldovrlp = 4,
   ens_cdamp = 0.2,
   ens_pblamp = 0.2,
@@ -307,13 +313,14 @@ inp=f'''
   pert_cd = F,
   pert_pbl = F,
   pert_sas = F,
+  cp_strength = {'1.0, '*max_dom}
 /
 
 &dynamics
   non_hydrostatic = {'T, '*max_dom}
   euler_adv = F,
   wp = {'0, '*max_dom}
-  coac = 1.5,{' 2.0,'*len(coords)}{' 2.6,'*len(coords)}
+  coac = 1.5, 2.0, 2.6, 2.6,
   codamp = {'12.0, '*max_dom}
   terrain_smoothing = 2,
   dwdt_damping_lev = {'2000.0, '*max_dom}

@@ -1,0 +1,228 @@
+#!/bin/sh
+######################################################################
+#              launcher wrapper script by Shyama and Sasanka                        
+######################################################################
+######################################################################
+#---------------------------------------------------------------------
+#   Global definitions of environment variables
+#---------------------------------------------------------------------
+
+#SBATCH -J launcher
+#SBATCH -p skx
+#SBATCH -N 1
+#SBATCH -n 48
+#SBATCH -t 00:30:00
+#SBATCH -A ATM24007 
+#SBATCH --mail-type=all
+#SBATCH --mail-user=shyamamohanty@utexas.edu
+#SBATCH --output=/scratch/09917/shyamamohanty06/iola/outputs/test/launcher.log
+
+
+export START_TIME=2025112700    # Initial start date
+export SID=04B                  # Storm ID
+export CASE_ROOT=HISTORY
+export expt=SENYAR
+export cycle=2025112700
+export force="-f"
+export EXPT=test
+export TOTAL_TASKS='40'
+export envir='prod'
+export PARAFLAG='YES'
+export WHERE_AM_I='stampede3'
+export USHhwrf=/work2/09534/st37357/stampede3/IOLA_repository/ush
+export HOMEhwrf=/work2/09534/st37357/stampede3/IOLA_repository
+export SCRIPTShwrf=/work2/09534/st37357/stampede3/IOLA_repository/scripts
+export PYTHONPATH=/work2/09534/st37357/stampede3/IOLA_repository/ush
+export output_dir=/scratch/09534/st37357/hycom_run
+export FIXhwrf=/work2/09534/st37357/frontera/fix
+export EXEChwrf=/work2/09534/st37357/stampede3/IOLA_repository/exec
+export syndat=/scratch/09534/st37357/test_hycom_python/syndat_tcvitals
+
+export HWRF_FORCE_TMPDIR=$output_dir/$START_TIME/$SID/tmpdir
+export CONFhwrf=$output_dir/com/$START_TIME/$SID/storm1.conf
+export WORKhwrf=$output_dir/$START_TIME/$SID
+export COMhwrf=$output_dir/com/$START_TIME/$SID
+export com=$output_dir/com/$START_TIME/$SID
+export jlogfile=$output_dir/test/log/jlogfile
+
+set -x
+
+######################################################################
+#   Launcher
+######################################################################
+
+cat << 'EOF' > run_iola_exec.sh
+#! /bin/sh --login
+######################################################################
+##### THIS FILE IS TO RUN THE HWRF THROUGH SCRIPTS MODE.#######
+######################################################################
+
+#module load slurm
+
+set -x -u -e
+date
+. $USHhwrf/hwrf_pre_job.sh.inc
+exec "$@"
+EOF
+
+chmod +x run_iola_exec.sh
+
+./run_iola_exec.sh ${HOMEhwrf}/scripts/exhwrf_launch.py "$START_TIME" "$SID"  "$CASE_ROOT"  "$HOMEhwrf/parm" "config.EXPT=$EXPT" "config.HOMEhwrf=$HOMEhwrf" "config.case_root=$CASE_ROOT" "config.CONFhwrf=$CONFhwrf" "dir.WORKhwrf=$WORKhwrf"  "dir.EXhwrf=$SCRIPTShwrf" "dir.com=$COMhwrf"  "config.SUBEXPT=$EXPT" "dir.USHhwrf=$USHhwrf" "config.ENS=99"
+
+########################################################################
+#   hwrf_get_rtofs, hwrf_rtofs_subregion, hwrf_rtofs_restart2restart
+########################################################################
+
+./run_iola_exec.sh ${HOMEhwrf}/scripts/exhwrf_ocean_init.py
+rm run_iola_exec.sh
+
+#########################################################################
+#   hwrf_gfs2ofs2
+########################################################################
+
+cd ${WORKhwrf}/hycominit
+
+ln -sf ${HOMEhwrf}/sorc/hycom/exec/hwrf_gfs2ofs2 .
+# Loop from 1 to 10
+for i in {1..10}; do
+    in_file="gfs2ofs.${i}.in"
+    out_file="gfs2ofs.${i}.out"
+
+    # Check if input file exists
+    if [[ -f "$in_file" ]]; then
+        echo "Processing $in_file → $out_file"
+        cat "$in_file" | ./hwrf_gfs2ofs2 > "$out_file"
+    else
+        echo "Warning: $in_file not found, skipping."
+    fi
+done
+
+mkdir temp
+mv forcing.* temp/
+
+############################################################################
+#    hwrf_ofs_timeinterp_forcing
+###########################################################################
+
+# Create timestep forcing input files
+declare -A firstvar=(
+    [airtmp]="precip"
+    [precip]="airtmp"
+    [presur]="precip"
+    [radflx]="airtmp"
+    [shwflx]="airtmp"
+    [surtmp]="precip"
+    [tauewd]="airtmp"
+    [taunwd]="airtmp"
+    [vapmix]="precip"
+    [wndspd]="precip"
+)
+
+# Loop through all forcing variable names
+for var in "${!firstvar[@]}"; do
+    file="timeinterp_forcing.${var}.in"
+    fv="${firstvar[$var]}"
+
+    cat << EOF > "$file"
+$fv
+5
+11
+$var
+5
+11
+   $var:
+EOF
+
+    echo "Created $file"
+done
+
+ln -sf ${HOMEhwrf}/sorc/hycom/exec/iola_ofs_timeinterp_forcing .
+
+# Check if there are any files matching the pattern
+if ls timeinterp_forcing.*.in >/dev/null 2>&1; then
+  # Loop through each file matching timeinterp_forcing.*.in
+  for file in timeinterp_forcing.*.in; do
+    echo "Processing $file..."
+    cat "$file" | ./iola_ofs_timeinterp_forcing
+    if [ $? -eq 0 ]; then
+      echo "$file processed successfully."
+    else
+      echo "Error processing $file."
+    fi
+  done
+else
+  echo "No files matching timeinterp_forcing.*.in found."
+  exit 1
+fi
+
+###########################################################################
+# HYCOM Forecast 
+#########################################################################
+
+# Base directories
+export PARM=$HOMEhwrf/parm/hycom
+export OUT=$WORKhwrf/hycominit
+export FIX=$FIXhwrf/hwrf-hycom
+export EXEC=$HOMEhwrf/sorc/hycom/exec
+export SRC=$HOMEhwrf/sorc/hycom/exec
+
+# Copy blkdat.input
+cp -p "$PARM/hwrf_rtofs_hin40.basin.fcst.blkdat.input.standalone" \
+    "$OUT/tmp.hwrf_rtofs_hin40.basin.fcst.blkdat.input.standalone.part.UyvK93"
+mv "$OUT/tmp.hwrf_rtofs_hin40.basin.fcst.blkdat.input.standalone.part.UyvK93" \
+    "$OUT/blkdat.input"
+
+# Copy ports.input
+cp -p "$PARM/hwrf_rtofs_hin40.basin.ports.input" \
+    "$OUT/tmp.hwrf_rtofs_hin40.basin.ports.input.part.4vO2Dp"
+mv "$OUT/tmp.hwrf_rtofs_hin40.basin.ports.input.part.4vO2Dp" \
+    "$OUT/ports.input"
+
+# Copy patch.input.90
+cp -p "$PARM/hwrf_rtofs_hin40.basin.patch.input.90" \
+    "$OUT/tmp.hwrf_rtofs_hin40.basin.patch.input.90.part.6FVmov"
+mv "$OUT/tmp.hwrf_rtofs_hin40.basin.patch.input.90.part.6FVmov" \
+    "$OUT/patch.input"
+
+# Work in hycominit directory
+cd "$OUT"
+mkdir -p nest
+
+# Link nest archives
+ln -sf hwrf_basin.000.a nest/archv.2023_296_00.a
+ln -sf hwrf_basin.000.b nest/archv.2023_296_00.b
+
+# Copy relax.rmu files
+cp -p relax.rmu.b "nest/tmp.relax.rmu.b.part.e4nk7S" || true
+mv "nest/tmp.relax.rmu.b.part.e4nk7S" nest/rmu.b
+
+# Create symbolic links to forcing and fix files
+ln -sf $FIX/hwrf_rtofs_hin40.basin.forcing.chl.a forcing.chl.a
+ln -sf $FIX/hwrf_rtofs_hin40.basin.forcing.chl.b forcing.chl.b
+ln -sf $FIX/hwrf_rtofs_hin40.basin.forcing.offlux.a forcing.offlux.a
+ln -sf $FIX/hwrf_rtofs_hin40.basin.forcing.offlux.b forcing.offlux.b
+ln -sf $FIX/hwrf_rtofs_hin40.basin.forcing.rivers.a forcing.rivers.a
+ln -sf $FIX/hwrf_rtofs_hin40.basin.forcing.rivers.b forcing.rivers.b
+ln -sf $FIX/hwrf_rtofs_hin40.basin.relax.ssh.a relax.ssh.a
+ln -sf $FIX/hwrf_rtofs_hin40.basin.relax.ssh.b relax.ssh.b
+ln -sf $FIX/hwrf_rtofs_hin40.basin.veldf2.a veldf2.a
+ln -sf $FIX/hwrf_rtofs_hin40.basin.veldf2.b veldf2.b
+ln -sf $FIX/hwrf_rtofs_hin40.basin.veldf4.a veldf4.a
+ln -sf $FIX/hwrf_rtofs_hin40.basin.veldf4.b veldf4.b
+ln -sf $FIX/hwrf_rtofs_hin40.basin.tbaric.a tbaric.a
+ln -sf $FIX/hwrf_rtofs_hin40.basin.tbaric.b tbaric.b
+ln -sf $FIX/hwrf_rtofs_hin40.basin.iso.sigma.a iso.sigma.a
+ln -sf $FIX/hwrf_rtofs_hin40.basin.iso.sigma.b iso.sigma.b
+
+# link executable
+
+ln -sf $EXEC/iola_hycom_forecast .
+
+# Clean up temporary files if present
+rm -f "$OUT/ok" 2>/dev/null || true
+
+rm arch*
+rm restart_out*
+rm ovrtn_out*
+
+
